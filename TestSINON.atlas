@@ -1,0 +1,15 @@
+programme test;
+
+var
+bool x;
+
+debut
+x := vrai;
+
+si (x) alors
+    imprimer 'OUI';
+sinon
+    imprimer 'NON';
+fsi;
+
+fin.

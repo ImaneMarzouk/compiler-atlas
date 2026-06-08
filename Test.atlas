@@ -1,0 +1,25 @@
+programme TestComplet2;
+
+var
+ent note;
+bool admis;
+
+debut
+
+lire note;
+
+admis := note >= 12;
+
+si (admis) alors
+
+    si (note >= 16) alors
+        imprimer 'Tres Bien';
+    sinon
+        imprimer 'Admis';
+    fsi
+
+sinon
+    imprimer 'Ajourne';
+fsi
+
+fin.

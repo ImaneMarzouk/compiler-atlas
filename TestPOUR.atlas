@@ -1,0 +1,12 @@
+programme test;
+
+var
+ent i;
+
+debut
+
+pour i depuis 1 jusqua 10 faire
+    imprimer 'hello';
+fpour;
+
+fin.

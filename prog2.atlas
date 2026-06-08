@@ -1,0 +1,14 @@
+programme test ;
+const
+var
+  ent max =100;
+  ent a, b, c;
+debut
+lire a;
+b := a * 2;
+si b > max
+alors c := max;
+sinon c := b;
+ecrire c;
+fsi
+fin.
