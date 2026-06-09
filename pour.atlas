@@ -1,0 +1,12 @@
+programme testPourSimple;
+var
+    ent i, somme;
+debut
+    somme := 0;
+    
+    pour i depuis 1 jusqua 5 faire
+        somme := somme + i;
+    fpour
+    
+    ecrire somme;
+fin.

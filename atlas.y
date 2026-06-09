@@ -38,7 +38,7 @@ int fin_top = -1;
 
 void push_fin(int lbl) { fin_stack[++fin_top] = lbl; }
 int  pop_fin()         { return fin_stack[fin_top--]; }
-
+int  peek_fin()        { return fin_stack[fin_top]; }
 int lookup(const char *name) {
     for (int i = 0; i < symbol_count; i++)
         if (strcmp(symbol_table[i].name, name) == 0) return i;
@@ -118,6 +118,7 @@ extern int yylex();
 %token <str> ID STRING
 %token <val> INT BOOL_VAL
 %token DOT
+%token PASSER
 %type <expr> expression condition
 %type <str> type_decl
 %type <val> sinon_opt pas_opt
@@ -285,6 +286,8 @@ instruction:
          [bloc sinon]       (seulement si sinon present)
          lbl_fin:
     */
+    /* ===== SI (avec ou sans SINON) ===== */
+    /* ===== SI (avec ou sans SINON) ===== */
     | SI condition {
         int lbl_sinon = getLabel();
         int lbl_fin   = getLabel();
@@ -300,12 +303,18 @@ instruction:
         int lbl_fin = pop_fin();
         char buf[20];
         sprintf(buf, "%d", lbl_fin);
-        emit("bra", buf);
+        emit("label", buf); // On pose le label de fin ici
     }
 
     /* ===== TANTQUE ===== */
+   
     | TANTQUE {
-        $<val>$ = instruction_counter; /* memoriser le debut du test */
+        // Au lieu de l'instruction_counter, on pose un label physique pour le début
+        int lbl_debut = getLabel();
+        $<val>$ = lbl_debut;
+        
+        char buf[20]; sprintf(buf, "%d", lbl_debut);
+        emit("label", buf); 
     }
     condition {
         int lbl_fin = getLabel();
@@ -313,12 +322,17 @@ instruction:
         char buf[20]; sprintf(buf, "%d", lbl_fin);
         emit("bsf", buf);
     }
-    FAIRE instruction FTQ SEMICOLON {
+    FAIRE instructions FTQ SEMICOLON {
         int lbl_debut = $<val>2;
         int lbl_fin   = $<val>4;
+        
+        // On boucle vers le label de début
         char buf[20]; sprintf(buf, "%d", lbl_debut);
         emit("bra", buf);
-        instruction_counter = lbl_fin;
+        
+        // On pose le label de fin ici (la VM n'écrase plus rien !)
+        char buf2[20]; sprintf(buf2, "%d", lbl_fin);
+        emit("label", buf2);
     }
 
     /* ===== POUR ===== */
@@ -368,7 +382,7 @@ expression pas_opt {
     char buf[20]; sprintf(buf, "%d", lbl_fin);
     emit("bsf", buf);
 }
-FAIRE instruction FPOUR {
+FAIRE instructions FPOUR {
     int lbl_debut = $<val>7;    /* action après affect      */
     int lbl_fin   = $<val>12;   /* action après pas_opt     */
     int pas       = $<val>11;   /* pas_opt                  */
@@ -382,32 +396,41 @@ FAIRE instruction FPOUR {
     emit("plus", NULL);
     emit("affect", NULL);
 
+    // On reboucle proprement en cherchant la ligne du test (lbl_debut)
+    // Attention : comme lbl_debut stockait un ancien instruction_counter,
+    // pour que ce soit 100% compatible avec ta logique actuelle, on va plutôt poser un label de début !
+    // Mais le plus simple pour ne pas casser ta structure :
     char buf2[20]; sprintf(buf2, "%d", lbl_debut);
     emit("bra", buf2);
-    instruction_counter = lbl_fin;
+    
+    // ICI : Remplacement de instruction_counter = lbl_fin;
+    char buf3[20]; sprintf(buf3, "%d", lbl_fin);
+    emit("label", buf3);
 }
-
 sinon_opt:
-    /* vide */
+    /* CAS 1 : Pas de SINON */
     {
         int lbl_sinon = pop_sinon();
-        int lbl_fin   = pop_fin();
-
-        $$ = lbl_fin;  
+        char buf[20];
+        sprintf(buf, "%d", lbl_sinon);
+        emit("label", buf); // Le bsf pointe directement ici s'il n'y a pas de sinon
     }
 |
-SINON instructions
-    {
-        int lbl_fin = pop_fin();
-
+    /* CAS 2 : Présence d'un SINON */
+    SINON {
+        int lbl_fin = peek_fin();
         char buf[20];
         sprintf(buf, "%d", lbl_fin);
-        emit("bra", buf);
+        emit("bra", buf); // Sauter à la fin du bloc SI depuis le ALORS
 
         int lbl_sinon = pop_sinon();
-        
-
-        $$ = lbl_fin;
+        char buf2[20];
+        sprintf(buf2, "%d", lbl_sinon);
+        emit("label", buf2); // Le bsf du SI saute ICI pour exécuter le sinon
+    }
+    instructions 
+    {
+        // Rien à faire de plus ici, le label fin sera mis par le bloc SI parent
     }
 ;
 /* Pas optionnel pour la boucle POUR */
