@@ -7,6 +7,6 @@ debut
 
 pour i depuis 1 jusqua 10 faire
     imprimer 'hello';
-fpour;
+fpour
 
 fin.

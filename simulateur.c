@@ -39,14 +39,19 @@ int pop() {
 // Fonction pour trouver l'index dans le tableau C à partir du numéro d'instruction MAP
 int trouver_index_instruction(int target_id) {
     for (int i = 0; i < num_instructions; i++) {
+        // Cas 1: C'est le numéro de ligne standard
         if (parsed_instructions[i].id_instruction == target_id) {
             return i;
         }
+        // Cas 2: C'est une ligne de type "label XXX"
+        if (strcmp(parsed_instructions[i].mnemonic, "label") == 0 && parsed_instructions[i].arg != NULL) {
+            if (atoi(parsed_instructions[i].arg) == target_id) {
+                return i;
+            }
+        }
     }
-    // Si non trouvé (par exemple étiquette de fin), on s'arrête à la fin
     return num_instructions;
 }
-
 void load_map(const char *filename) {
     FILE *f = fopen(filename, "r");
     if (!f) {
@@ -130,6 +135,12 @@ void execute() {
         }
         else if (strcmp(mnem, "valeur-pile") == 0) {
             int addr = pile[ip];
+
+            if (addr < 0 || addr >= STACK_SIZE) {
+                fprintf(stderr, "Erreur: adresse invalide %d\n", addr);
+                exit(1);
+            }
+
             pile[ip] = pile[addr];
         }
         else if (strcmp(mnem, "affect") == 0) {
@@ -224,9 +235,17 @@ void execute() {
         else if (strcmp(mnem, "bsf") == 0) {
             int target_label = atoi(arg);
             int cond = pop();
+
             if (cond == 0) {
-                co = trouver_index_instruction(target_label);
-                continue; // Éviter le co++ final
+                int idx = trouver_index_instruction(target_label);
+
+                if (idx >= num_instructions) {
+                    fprintf(stderr, "Erreur: label invalide %d\n", target_label);
+                    exit(1);
+                }
+
+                co = idx;
+                continue;
             }
         }
         else if (strcmp(mnem, "bsv") == 0) {
@@ -239,9 +258,24 @@ void execute() {
         }
         else if (strcmp(mnem, "bra") == 0) {
             int target_label = atoi(arg);
-            co = trouver_index_instruction(target_label);
+
+            int idx = trouver_index_instruction(target_label);
+
+            if (idx >= num_instructions) {
+                fprintf(stderr, "Erreur: bra vers label invalide %d\n", target_label);
+                exit(1);
+            }
+
+            co = idx;
             continue;
         }
+        /* ===== AJOUT DE LA GESTION DU LABEL ICI ===== */
+        else if (strcmp(mnem, "label") == 0) {
+            // On ne fait absolument rien à l'exécution !
+            // C'est juste un marqueur de position. 
+            // La VM passe tranquillement à l'instruction suivante.
+        }
+        /* ============================================ */
         else {
             fprintf(stderr, "Instruction VM inconnue: %s\n", mnem);
         }
@@ -249,7 +283,6 @@ void execute() {
         co++;
     }
 }
-
 int main(int argc, char **argv) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <fichier.map>\n", argv[0]);

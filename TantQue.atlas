@@ -1,0 +1,16 @@
+programme testTantQue;
+var
+    ent base, expo, resultat;
+debut
+    lire base;
+    lire expo;
+    resultat := 1;
+    
+    tantque (expo > 0) 
+    faire
+        resultat := resultat * base;
+        expo := expo - 1;
+    ftq;
+
+    ecrire resultat; 
+fin.
